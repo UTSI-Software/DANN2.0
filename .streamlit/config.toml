@@ -1,10 +1,5 @@
 [theme]
-base = "light"
-primaryColor = "#2E8B57"                # UTSI seafoam green
-secondaryBackgroundColor = "#D3D3D3"    # Light gray
-textColor = "#000000"                   # Standard Black for main text
-backgroundColor = "#000080"             # Navy Blue for main background
-#errorColor = "#FFC0CB"                 # Warm Coral for notifications or errors
+base = "dark"
 
 [browser]
 gatherUsageStats = false
