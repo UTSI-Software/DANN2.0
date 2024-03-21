@@ -7,37 +7,20 @@ import pandas as pd
 import pdfquery
 import PyPDF2
 
+# TODO: 
+# add each client found to a client column "
 
-def ExtractMetaData(path):
-    """
-    Extracts metadata from a PDF file.
-
-    Args:
-    - path (str): Path to the PDF file.
-
-    Returns:
-    dict: Dictionary containing metadata information (Title, Path, Author, Creation Date, Subject, Creator).
-    """
+def ExtractMetaData(path, data_dict):
     # Open the PDF file in binary mode
     with open(path, 'rb') as file:
-        # Create a PDF reader object
-        pdf = PyPDF2.PdfReader(file)
-        
-        # Retrieve metadata from the PDF
-        metadata = pdf.metadata  # Access it as an attribute
-
-        # Access specific metadata properties
-        author = metadata.author
-        creator = metadata.creator
-        # creation_date = metadata.get('/CreationDate', 'Unknown')
         creation_date = os.path.getctime(path)  # Get creation date of the file
         creation_datetime = time.ctime(creation_date)  # Convert creation date to human-readable format
-        subject = metadata.subject
         title = os.path.basename(path).split('/')[-1]  # Extract the file name from the path
-
+        data_dict["Date"] = creation_datetime
+        data_dict["Title"] = title
+    
     # Return metadata as a dictionary
-    return {"Title": title, "Path": path, "Author": author, "Creation Date": creation_datetime, "Subject": subject,
-            "Creator": creator}
+    
 
 # Text should grab whole document content excluding metadata but grabs relevant parts of PDF
 def ExtractElements(text):
@@ -72,12 +55,13 @@ def ExtractElements(text):
 
     return(coords, outputtext)
 
-def WriteToExcel(data, output_path='output_data.xlsx'):
-    data_list = [data]
+def WriteToExcel(data_list, output_path='output_data.xlsx'):
     metadata_df = pd.DataFrame(data_list)
+    length = len(data_list)
+    metadata_df.iloc[length-1]
     metadata_df.to_excel(output_path, index=False)
 
-def ProcessPDFs(pdf_directory, keywords_excel_path):
+def ProcessPDFs(pdf_directory, keywords_excel_path, dict_list):
     # Load the PDF files using pdfquery
     pdf_files = [file for file in os.listdir(pdf_directory) if file.endswith('.pdf')]
 
@@ -86,6 +70,7 @@ def ProcessPDFs(pdf_directory, keywords_excel_path):
     keyword_list = keywords_df['Keywords'].tolist()
     # Process each PDF file
     for pdf_file in pdf_files:
+        my_dict={}
         pdf_path = os.path.join(pdf_directory, pdf_file)
 
         # Load the PDF file using pdfquery
@@ -94,23 +79,22 @@ def ProcessPDFs(pdf_directory, keywords_excel_path):
         pdf.load()
         pdf.tree.write('pdfXML.txt', pretty_print = True)
         #Collect Metadata
-        metadata_list = ExtractMetaData(pdf_path)
+        ExtractMetaData(pdf_path, my_dict)
+        
         #Check for keywords
-        populate_keywords(pdf, keyword_list)
+        populate_keywords(pdf, keyword_list, my_dict)
         #Check for clients
         # Write metadata to Excel
-        
+        dict_list.append(my_dict)
         # output_path = os.path.join(output_directory, f"{os.path.splitext(pdf_file)[0]}_output.xlsx")
-        WriteToExcel(metadata_list)
+        
 
-def populate_keywords(pdf, keyword_list):      # Extract text containing the keywords
-        extracted_text = ""
-        for keyword in keyword_list:
-            text = pdf.pq('LTTextLineHorizontal:contains("' + keyword + '")')
-            # extracted_text += f"Keyword: {keyword}\n"
-            # ExtractElements(text)
-            
-
+def populate_keywords(pdf, keyword_list, my_dict):      # Extract text containing the keywords
+    found_words = []
+    for keyword in keyword_list:
+        if (pdf.pq('LTTextLineHorizontal:contains("' + keyword + '")')):
+            found_words.append(keyword)
+    my_dict["Keywords"] = ",".join(found_words)
 
 
 def ReadFromExcel(path):
@@ -119,7 +103,9 @@ def ReadFromExcel(path):
 # Process multiple PDFs
 path = "C:\\Users\\cjw\\Desktop\\testpdfs"
 keywords_excel_path = "C:\\Users\\cjw\\Desktop\\GitHub\\DANN2.0\\Keywords.xlsx"
-ProcessPDFs(path, keywords_excel_path)
+dict_list = []
+ProcessPDFs(path, keywords_excel_path, dict_list)
+WriteToExcel(dict_list)
 
 # # # Write metadata to Excel
 # metadata_list = ExtractMetaData(path) 
