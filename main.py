@@ -8,7 +8,10 @@ import pdfquery
 import PyPDF2
 
 # TODO: 
-# add each client found to a client column "
+# add each client found to a client column
+# fetch all PDFs in output excel (zip?)
+# make a client reference list (compare values gotten from path and reference list)
+
 
 def ExtractMetaData(path, data_dict):
     # Open the PDF file in binary mode
@@ -68,11 +71,14 @@ def ProcessPDFs(pdf_directory, keywords_excel_path, dict_list):
     # Read keywords from the Excel sheet
     keywords_df = pd.read_excel(keywords_excel_path)
     keyword_list = keywords_df['Keywords'].tolist()
+
+    client_list = keywords_df['Clients'].tolist()
     # Process each PDF file
     for pdf_file in pdf_files:
+        # create a new dictionary to house each pdf files info
         my_dict={}
         pdf_path = os.path.join(pdf_directory, pdf_file)
-
+        my_dict["Path"] = pdf_path
         # Load the PDF file using pdfquery
         pdf = pdfquery.PDFQuery(pdf_path)
         #choose pdf2 or pdfquery
@@ -80,21 +86,22 @@ def ProcessPDFs(pdf_directory, keywords_excel_path, dict_list):
         pdf.tree.write('pdfXML.txt', pretty_print = True)
         #Collect Metadata
         ExtractMetaData(pdf_path, my_dict)
-        
         #Check for keywords
-        populate_keywords(pdf, keyword_list, my_dict)
+        populate_keywords(pdf, keyword_list, my_dict, "Keywords")
         #Check for clients
-        # Write metadata to Excel
-        dict_list.append(my_dict)
-        # output_path = os.path.join(output_directory, f"{os.path.splitext(pdf_file)[0]}_output.xlsx")
-        
+        populate_keywords(pdf, client_list, my_dict, "Clients")
+        # append this specific pdf's dictionary to the dicitonary list (dict_list)
+        dict_list.append(my_dict)        
 
-def populate_keywords(pdf, keyword_list, my_dict):      # Extract text containing the keywords
+def populate_keywords(pdf, word_list, my_dict, column_name):      # Extract text containing the keywords
     found_words = []
-    for keyword in keyword_list:
-        if (pdf.pq('LTTextLineHorizontal:contains("' + keyword + '")')):
-            found_words.append(keyword)
-    my_dict["Keywords"] = ",".join(found_words)
+    for word in word_list:
+        # if (pdf.pq('LTTextLineHorizontal:contains("' + keyword + '")')):
+            # found_words.append(keyword)
+        if not pd.isnull(word):
+            if (pdf.pq('LTPage:contains("' + word + '")')):
+                found_words.append(word)
+    my_dict[column_name] = " ,".join(found_words)
 
 
 def ReadFromExcel(path):
@@ -106,10 +113,5 @@ keywords_excel_path = "C:\\Users\\cjw\\Desktop\\GitHub\\DANN2.0\\Keywords.xlsx"
 dict_list = []
 ProcessPDFs(path, keywords_excel_path, dict_list)
 WriteToExcel(dict_list)
-
-# # # Write metadata to Excel
-# metadata_list = ExtractMetaData(path) 
-# WriteToExcel(metadata_list)
-
 
 #####################################################################
